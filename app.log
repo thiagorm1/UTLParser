@@ -1,0 +1,4 @@
+2026-06-03 14:56:04,372 - __main__ - INFO - generate causal graphs from dns dns.log
+2026-06-03 14:56:04,372 - __main__ - INFO - Sumbitting task to process log: /home/emeson/Área de trabalho/LACIS/artigo/unit_test/data/dns.log
+2026-06-08 11:26:11,453 - __main__ - INFO - generate causal graphs from dns dns.log
+2026-06-08 11:26:11,453 - __main__ - INFO - Sumbitting task to process log: /home/emeson/Área de trabalho/LACIS/artigo/unit_test/data/dns.log
