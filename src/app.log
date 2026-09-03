@@ -119,3 +119,12 @@
 2026-06-08 12:31:31,504 - __main__ - INFO - Sumbitting task to process log: /home/emeson/Área de trabalho/LACIS/artigo/UTLParser/unit_test/data/dns.log
 2026-06-08 13:13:17,135 - __main__ - INFO - generate causal graphs from dns dns.log
 2026-06-08 13:13:17,136 - __main__ - INFO - Sumbitting task to process log: /home/emeson/Desktop/LACIS/artigo/UTLParser/unit_test/data/dns.log
+2026-09-03 15:15:43,072 - __main__ - INFO - generate causal graphs from None /home/thiagorm/Projects/UTLParser/unit_test/data
+2026-09-03 15:17:56,721 - __main__ - INFO - generate causal graphs from None /home/thiagorm/Projects/UTLParser/unit_test/data
+2026-09-03 15:21:40,945 - __main__ - INFO - generate causal graphs from None /home/thiagorm/Projects/UTLParser/unit_test/data
+2026-09-03 15:33:31,918 - __main__ - INFO - generate causal graphs from None /home/thiagorm/Projects/UTLParser/unit_test/data
+2026-09-03 15:45:45,431 - __main__ - INFO - generate causal graphs from None /home/thiagorm/Projects/UTLParser/unit_test/data
+2026-09-03 15:50:40,031 - __main__ - INFO - generate causal graphs from None /home/thiagorm/Projects/UTLParser/unit_test/data
+2026-09-03 16:00:21,936 - __main__ - INFO - generate causal graphs from None /home/thiagorm/Projects/UTLParser/unit_test/data
+2026-09-03 16:09:02,293 - __main__ - INFO - generate causal graphs from None /home/thiagorm/Projects/UTLParser/unit_test/data
+2026-09-03 16:12:21,459 - __main__ - INFO - All log processing tasks completed.
