@@ -37,7 +37,18 @@ class KVParser:
         '''
         :param poi_list: for example: ["type", "timestamp", "acct", "exe", "res"]
         '''
-        self.PoI = cfg.POI[app][log_type]
+        if app in cfg.POI and log_type in cfg.POI[app]:
+            self.app = app
+            self.PoI = cfg.POI[app][log_type]
+        else:
+            for p_app, types in cfg.POI.items():
+                if log_type in types or (app and app.lower() == p_app.lower()):
+                    self.app = p_app
+                    self.PoI = types.get(log_type, next(iter(types.values())))
+                    break
+            else:
+                self.app = "apache"
+                self.PoI = ["type", "timestamp", "acct", "exe", "hostname", "res", "pid", "unit"]
         self.format_output = {
             "Time":[],
             "Src_IP":[],
@@ -57,7 +68,6 @@ class KVParser:
         self.path = indir
         self.savePath = outdir
         self.log_type = log_type
-        self.app = app
 
         self.logs = Path(self.path).joinpath(self.logName).read_text().splitlines()
 
@@ -291,9 +301,16 @@ class KVParser:
 
         logger.info("generating the format output for {}-{} logs".format(self.app.lower(), self.log_type.lower()))
         # the mapping dict may be different from logs, consider application and log_type
-        column_poi_map = domaininfo.unstru_log_poi_map[self.app][self.log_type]
+        if self.app in domaininfo.unstru_log_poi_map and self.log_type in domaininfo.unstru_log_poi_map[self.app]:
+            column_poi_map = domaininfo.unstru_log_poi_map[self.app][self.log_type]
+        elif "apache" in domaininfo.unstru_log_poi_map and self.log_type in domaininfo.unstru_log_poi_map["apache"]:
+            column_poi_map = domaininfo.unstru_log_poi_map["apache"][self.log_type]
+        elif "sysdig" in domaininfo.unstru_log_poi_map and self.log_type in domaininfo.unstru_log_poi_map["sysdig"]:
+            column_poi_map = domaininfo.unstru_log_poi_map["sysdig"][self.log_type]
+        else:
+            column_poi_map = domaininfo.unstru_log_poi_map.get("apache", {}).get("audit", {})
 
-        if self.app.lower() == "apache":
+        if self.app.lower() == "apache" or self.log_type.lower() == "audit":
             if self.log_type.lower() == "audit":
                 sum_poi_dict = self.log_parse()
                 if sum_poi_dict != {}:
@@ -320,7 +337,7 @@ class KVParser:
                 
                 # logger.info("the parsing output is like: {}".format(self.format_output))
 
-        elif self.app.lower() == "sysdig":
+        elif self.app.lower() == "sysdig" or self.log_type.lower() == "process":
             if self.log_type.lower() == "process":
                 sum_poi_dict = self.log_parse()
                 if sum_poi_dict != {}:
