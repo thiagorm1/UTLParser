@@ -106,6 +106,10 @@ class UniFormat:
         ''' randomly pick num logs to generate the log format 
         :param num: default 10
         ''' 
+        if not self.logs:
+            return []
+        if len(self.logs) <= num:
+            return self.logs
         return random.sample(self.logs, num)
 
     def com_check(self, sentence:str, pos:int, stop_indictor:str, split_num:int, log_format_dict:dict):
@@ -281,29 +285,31 @@ class UniFormat:
     def cal_depth(self, sens, max_len=10, min_len=3, a=0.5):
         ''' decide the threshold for similarity matching with mean length
         '''
-        depth = 0
         token_len_list = []
-        occ_list=[]
+        occ_list = []
 
         for sen in sens:
-            len = self.content_length(sen)
+            length = self.content_length(sen)
             occ = sen.count("=")
-            if len:
-                token_len_list.append(len)
+            if length:
+                token_len_list.append(length)
             if occ:
                 occ_list.append(occ)
 
-        # calculate the variance
-        len_mean = round(statistics.mean(token_len_list),2)
-        if occ_list == []:
-            occ_mean = 0
-        else:
-            occ_mean = round(statistics.mean(occ_list),2)
+        if not token_len_list:
+            logger.info("calculated depth is: 3")
+            return 3
+
+        len_mean = round(statistics.mean(token_len_list), 2)
+        occ_mean = round(statistics.mean(occ_list), 2) if occ_list else 0
 
         if len_mean <= min_len:
             depth = 3
         elif len_mean < max_len:
-            depth = 3 + int((1-a)*((max_len - min_len)/ (len_mean - min_len)) + a * occ_mean)
+            if len_mean == min_len:
+                depth = 3 + int(a * occ_mean)
+            else:
+                depth = 3 + int((1-a)*((max_len - min_len)/ (len_mean - min_len)) + a * occ_mean)
         else:
             depth = 6
 
@@ -316,21 +322,22 @@ class UniFormat:
         calculate the variance of rate of = in sentence, 
         more complex of structure, the lower the similarity threshold
         '''
-        threshold = 0
         rate_list = []
         for sen in sens:
-            # get the token number
-            len = self.content_length(sen)
-            # get the total equal mark
+            length = self.content_length(sen)
             occ = sen.count("=")
-            if len:
-                rate_list.append(round(occ/len, 3))
+            if length:
+                rate_list.append(round(occ / length, 3))
 
-        rate_var = statistics.variance(rate_list)  
-        if rate_var == min_var:
+        if len(rate_list) >= 2:
+            rate_var = statistics.variance(rate_list)
+        else:
+            rate_var = min_var
+
+        if rate_var <= min_var:
             threshold = 0.2
         elif rate_var < max_var:
-            threshold = 0.2 + round(rate_var * (0.6) / (max_var - min_var),3)
+            threshold = 0.2 + round(rate_var * (0.6) / (max_var - min_var), 3)
         else:
             threshold = 0.8
         
