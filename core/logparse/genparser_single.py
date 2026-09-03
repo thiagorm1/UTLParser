@@ -380,6 +380,21 @@ class GenLogParser:
 
 
     def outputResult(self, logClustL):
+        if self.df_log.empty:
+            self.df_log["EventId"] = []
+            self.df_log["EventTemplate"] = []
+            self.df_log["Parameters"] = []
+            self.df_log.to_csv(
+                Path(self.savePath).joinpath(self.logName + "_structured.csv"), index=False
+            )
+            df_event = pd.DataFrame(columns=["EventId", "EventTemplate", "Occurrences"])
+            df_event.to_csv(
+                Path(self.savePath).joinpath(self.logName + "_templates.csv"),
+                index=False,
+                columns=["EventId", "EventTemplate", "Occurrences"],
+            )
+            return
+
         log_templates = [0] * self.df_log.shape[0]
         log_templateids = [0] * self.df_log.shape[0]
         df_events = []
@@ -399,7 +414,8 @@ class GenLogParser:
         self.df_log["EventId"] = log_templateids
         self.df_log["EventTemplate"] = log_templates
         if self.keep_para:
-            self.df_log["Parameters"] = self.df_log.apply(
+            tqdm.pandas(desc=f"Extracting parameters ({self.logName})")
+            self.df_log["Parameters"] = self.df_log.progress_apply(
                 self.get_parameter_list, axis=1
             )
         self.df_log.to_csv(
@@ -477,25 +493,27 @@ class GenLogParser:
         ''' extract the potential anchor word, waiting to add more rules on direction
         
         '''
-        # if ":" in content_part:
-        #     content_part = content_part.rsplit(":")[1]
-        # define the extract verb
+        if not hasattr(self, '_action_cache'):
+            self._action_cache = {}
+        if content_part in self._action_cache:
+            return self._action_cache[content_part]
+
         clean_content = util.token_filter(content_part)
         doc = nlp(clean_content)
         # check available verb with basic rule
         veb_res = self.depparser.verb_ext(doc)
         if veb_res:        
-            # print(veb_res)
-            return veb_res[0], veb_res[1]
-        
-        # check pre-define dependency pattern
-        dep_res = self.depparser.depen_parse(doc)
-        if dep_res:
-            # print(dep_res)
-            return dep_res[0], dep_res[1]
-        
+            res = (veb_res[0], veb_res[1])
+        else:
+            # check pre-define dependency pattern
+            dep_res = self.depparser.depen_parse(doc)
+            if dep_res:
+                res = (dep_res[0], dep_res[1])
+            else:
+                res = ('-', '-')
 
-        return '-', '-'
+        self._action_cache[content_part] = res
+        return res
 
     def time_create(self, log_df: pd.DataFrame):
         ''' assemble the separate time  component to unified format
@@ -524,10 +542,16 @@ class GenLogParser:
         ''' extract the potential action from content
         
         '''
-        tqdm.pandas(desc="extracting pois")
-        self.df_log[["Content", "Direction"]] = self.df_log["Content"].apply(lambda x: pd.Series(self.action_ext(x)))
+        if self.df_log.empty:
+            self.df_log["Direction"] = []
+            self.df_log["PID"] = []
+            self.df_log["Time"] = []
+            return
+        tqdm.pandas(desc=f"Extracting semantics & actions ({self.logName})")
+        self.df_log[["Content", "Direction"]] = self.df_log["Content"].progress_apply(lambda x: pd.Series(self.action_ext(x)))
         # filter points of interests
-        self.df_log["Parameters"] = self.df_log["Parameters"].apply(lambda x: self.para_check(x))
+        tqdm.pandas(desc=f"Filtering POI parameters ({self.logName})")
+        self.df_log["Parameters"] = self.df_log["Parameters"].progress_apply(lambda x: self.para_check(x))
         # extract PID from proto if exist
         if "Proto" in self.df_log.columns:
             self.df_log[["Proto", "PID"]] = self.df_log["Proto"].apply(lambda x: pd.Series(self.pid_ext(x)))
