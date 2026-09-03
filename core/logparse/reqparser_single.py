@@ -41,7 +41,18 @@ class ReqParser:
         :param poi_list: src_ip, time, request_method, content (parameters),
                          status, referer(domain), user_agent(tool name)
         '''
-        self.PoI = cfg.POI[app][log_type]
+        if app in cfg.POI and log_type in cfg.POI[app]:
+            self.app = app
+            self.PoI = cfg.POI[app][log_type]
+        else:
+            for p_app, types in cfg.POI.items():
+                if log_type in types or (app and app.lower() == p_app.lower()):
+                    self.app = p_app
+                    self.PoI = types.get(log_type, next(iter(types.values())))
+                    break
+            else:
+                self.app = "apache"
+                self.PoI = ["Src_IP", "Time", "Content", "Status", "Referer", "Request_Method", "User_Agent"]
         self.format_output = {
             "Time":[],
             "Src_IP":[],
@@ -61,7 +72,6 @@ class ReqParser:
         self.path = indir
         self.savePath = outdir
         self.log_type = log_type
-        self.app = app
 
         self.logs = Path(self.path).joinpath(self.logName).read_text().splitlines()
     
@@ -139,7 +149,7 @@ class ReqParser:
         '''
         log_messages = []
         start_time = datetime.now() 
-        for line in self.logs:
+        for line in tqdm(self.logs, desc=f"Parsing HTTP requests ({self.logName})"):
             try:
                 # match every component
                 match = regex.search(line.strip())
@@ -156,10 +166,11 @@ class ReqParser:
         print("Total lines: ", len(logdf))
         logdf = logdf[desired_columns]
         # extract the necessary part based on functions
-        logdf['Time'] = logdf["Time"].apply(lambda x: self.time_parse(x))
-        logdf["Content"] = logdf['Content'].apply(lambda x: self.url_para_ext(x))
-        logdf['Referer'] = logdf['Referer'].apply(lambda x: self.domain_ext(x))
-        logdf["User_Agent"] = logdf["User_Agent"].apply(lambda x: self.user_agent_ext(x))
+        tqdm.pandas(desc=f"Formatting HTTP fields ({self.logName})")
+        logdf['Time'] = logdf["Time"].progress_apply(lambda x: self.time_parse(x))
+        logdf["Content"] = logdf['Content'].progress_apply(lambda x: self.url_para_ext(x))
+        logdf['Referer'] = logdf['Referer'].progress_apply(lambda x: self.domain_ext(x))
+        logdf["User_Agent"] = logdf["User_Agent"].progress_apply(lambda x: self.user_agent_ext(x))
         
         logger.info("Parsing Done. [Time taken: {!s}]".format(datetime.now() - start_time))
 
@@ -172,9 +183,14 @@ class ReqParser:
         start_time = datetime.now() 
 
         logger.info("generating the format output for {}-{} logs".format(self.app.lower(), self.log_type.lower()))
-        column_poi_map = domaininfo.unstru_log_poi_map[self.app][self.log_type]
+        if self.app in domaininfo.unstru_log_poi_map and self.log_type in domaininfo.unstru_log_poi_map[self.app]:
+            column_poi_map = domaininfo.unstru_log_poi_map[self.app][self.log_type]
+        elif "apache" in domaininfo.unstru_log_poi_map and "access" in domaininfo.unstru_log_poi_map["apache"]:
+            column_poi_map = domaininfo.unstru_log_poi_map["apache"]["access"]
+        else:
+            column_poi_map = {}
 
-        if self.app.lower() == "apache":
+        if self.app.lower() == "apache" or "access" in self.log_type.lower():
             if "access" in self.log_type.lower():
                 # generate the regex and headers
                 headers, regex = self.gen_logformat_regex(log_format[0])
