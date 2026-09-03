@@ -2,9 +2,9 @@ import sys
 from pathlib import Path
 sys.path.insert(0,Path(sys.path[0]).resolve().parent.as_posix())
 from utils import util
-from core.logparse import kvparser
-from core.logparse import reqparser
-from core.logparse import genparser
+from core.logparse import kvparser_single as kvparser
+from core.logparse import reqparser_single as reqparser
+from core.logparse import genparser_single as genparser
 from core.logparse import uniformat
 from core.logparse import strreader
 import cfg
@@ -35,15 +35,20 @@ class LogParser:
     def choose_logparser(self,):
         indir = Path(self.log_path).parent
         outdir = self.output_path
-        logname = Path(self.log_path).stem
-        
+        logname = Path(self.log_path).stem.lower()
+        resolved_app = self.log_app
+        for candidate_app, subdict in cfg.POI.items():
+            if logname in subdict or (self.log_app and self.log_app.lower() == candidate_app.lower()):
+                resolved_app = candidate_app
+                break
+
         if logname in cfg.log_type["kv"]:
             logparser = kvparser.KVParser(
                 indir = indir,
                 outdir = outdir,
                 log_name= Path(self.log_path).name,
                 log_type = logname,
-                app = self.log_app
+                app = resolved_app
                 )
             
         elif logname in cfg.log_type["req"]:
@@ -52,37 +57,32 @@ class LogParser:
                 outdir = outdir,
                 log_name= Path(self.log_path).name,
                 log_type = logname,
-                app = self.log_app
+                app = resolved_app
             )
         
         elif logname in cfg.log_type["gen"]:
             # check whether parameters have been calculated before
-            if self.log_app in cfg.format_dict.keys():
-                if logname in cfg.format_dict[self.log_app].keys():
-                    # rex is decided by types of IOCs to extract
-                    rex = cfg.format_dict[self.log_app]["regex"]
-                    log_format = cfg.format_dict[self.log_app]["log_format"]
-                    depth = cfg.format_dict[self.log_app]["depth"]
-                    st = cfg.format_dict[self.log_app]["st"]
-                else:
-                    logger.info("{} in {} has not been processed before, \
-                                generating parameters".format(logname, self.log_app))
-                    # check whether desired entities have been provided
-                    if not self.iocs_list:
-                        logger.warn("The desired entities have not been provided, please add a list in command")
-                        sys.exit(1)
-                    else:
-                        rex = [cfg.regex[ioc] for ioc in self.iocs_list ]
-                    depth, thres, log_format = self.gen_parser_paras()
+            found_cfg = None
+            for app_key, log_cfgs in cfg.format_dict.items():
+                if (self.log_app and self.log_app.lower() == app_key.lower()) or logname in log_cfgs:
+                    if logname in log_cfgs:
+                        found_cfg = log_cfgs[logname]
+                        break
+                    elif self.log_app in log_cfgs:
+                        found_cfg = log_cfgs[self.log_app]
+                        break
+
+            if found_cfg:
+                rex = found_cfg["regex"]
+                log_format = found_cfg["log_format"]
+                depth = found_cfg["depth"]
+                thres = found_cfg["st"]
             else:
-                logger.info("logs in {} has not been processed before, \
-                            generating parameters".format(logname, self.log_app))
-                # check whether desired entities have been provided
+                logger.info("{} in {} has not been processed before, generating parameters".format(logname, self.log_app))
                 if not self.iocs_list:
-                    logger.warn("The desired entities have not been provided, please add a list in command")
-                    sys.exit(1)
+                    rex = [cfg.regex['ip4'], cfg.regex['domain']]
                 else:
-                    rex = [cfg.regex[ioc] for ioc in self.iocs_list ]
+                    rex = [cfg.regex[ioc] for ioc in self.iocs_list if ioc in cfg.regex]
                 depth, thres, log_format = self.gen_parser_paras()
             
             # parse general logs
@@ -126,6 +126,9 @@ class LogParser:
         return depth, thres, log_format
 
     def generate_output(self, logparser):
-        logparser.parse()
-        logparser.poi_ext()
-        logparser.get_output(0)
+        if hasattr(logparser, "depth") and hasattr(logparser, "parse"):
+            logparser.parse()
+            logparser.poi_ext()
+            logparser.get_output(0)
+        else:
+            logparser.get_output(0)
