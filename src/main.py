@@ -7,7 +7,9 @@
 
 import sys
 from pathlib import Path
-sys.path.insert(0,Path(sys.path[0]).resolve().parent.as_posix())
+parent_dir = Path(__file__).resolve().parent.parent.as_posix()
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
 from utils import util
 from core.logparse import unilogparser
 from core.graph_create import caugraph
@@ -35,12 +37,18 @@ def process_log(log_app, log_path, output_path, iocs_list):
     ''' process a single log file in parallel
     
     '''
+    import sys
+    from pathlib import Path
+    p_dir = Path(__file__).resolve().parent.parent.as_posix()
+    if p_dir not in sys.path:
+        sys.path.insert(0, p_dir)
+    from core.logparse import unilogparser
     uparser = unilogparser.LogParser(log_app, log_path, output_path, iocs_list)
     logparser = uparser.choose_logparser()
     uparser.generate_output(logparser)
 
 
-ray.init(num_cpus=1)
+ray.init(num_cpus=1, runtime_env={"env_vars": {"PYTHONPATH": parent_dir}}, ignore_reinit_error=True)
 
 class GraphTrace:
     def __init__(self, log_app, log_path, output_path, iocs_list, stru:bool):
@@ -177,8 +185,11 @@ if __name__ == "__main__":
     if args.app_list:
         print("** make sure you provide application list and generate uniformed output before **")
         # parallel process subgraphs
+        log_configs = [
+            (app, indir.joinpath(f"{app}.log"), output_path, iocs_list)
+            for app in args.app_list
+        ]
         graphtracker = GraphTrace(log_app, log_path, output_path, iocs_list, struc)
-        log_configs = [(log_app, log_path, output_path, iocs_list) for log_app in args.app_list]
         graphtracker.multi_log_parse(log_configs)
         # fuse subgraphs if required 
         if args.fuse:
