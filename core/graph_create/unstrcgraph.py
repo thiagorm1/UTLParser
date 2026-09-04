@@ -83,7 +83,13 @@ class UnstrGausalGraph:
                         nodes.append(row[key])
         else:
             # check the length of corresponding value
-            value = ast.literal_eval(value)
+            if isinstance(value, str) and value.strip() not in ('-', '', 'nan', 'None'):
+                try:
+                    value = ast.literal_eval(value)
+                except Exception:
+                    value = [value]
+            elif not isinstance(value, list):
+                value = [value] if value != '-' else []
             nodes.extend(value)
         
         return nodes
@@ -139,19 +145,23 @@ class UnstrGausalGraph:
         
         nodes_list, edges_list = [], []
         
+        def safe_literal_eval(val):
+            if isinstance(val, str) and val.strip() not in ('-', '', 'nan', 'None'):
+                try:
+                    return ast.literal_eval(val)
+                except Exception:
+                    return val
+            return val
+
         try:
-            self.log_df['IOCs'] = self.log_df["IOCs"].apply(lambda x: ast.literal_eval(x))
+            self.log_df['IOCs'] = self.log_df["IOCs"].apply(safe_literal_eval)
         except Exception as e:
-            logger.warn("error occurs when converting IOCs type", e)
-        finally:
-            pass          
-        
+            logger.warning("error occurs when converting IOCs type: %s", e)
+
         try:
-            self.log_df['Parameters'] = self.log_df["Parameters"].apply(lambda x: ast.literal_eval(x))
+            self.log_df['Parameters'] = self.log_df["Parameters"].apply(safe_literal_eval)
         except Exception as e:
-            logger.warn("error occurs when converting Parameters type", e)
-        finally:
-            pass   
+            logger.warning("error occurs when converting Parameters type: %s", e)   
 
         # create the causal graph
         for _, row in tqdm(self.log_df.iterrows(), desc="making causal graph from {}".format(self.log_type)):
@@ -201,17 +211,21 @@ class UnstrGausalGraph:
         return G
 
     def graph_save(self, G, name:str):
+        file_name = name if name else self.log_type
+        save_path = Path(self.savePath)
+        save_path.mkdir(parents=True, exist_ok=True)
+        nx.write_graphml_lxml(G, save_path.joinpath(f'{file_name}.graphml'))
 
-        fig, ax = plt.subplots()
-        graphdraw = graphlabel.GraphLabel(cfg.attr_iocs_dict, cfg.ait_iot_dict)
-        graphdraw.draw_labeled_multigraph(G, "value", ax)
-        fig.tight_layout()
-        if not name:
-            nx.write_graphml_lxml(G, Path(self.savePath).joinpath('{}.graphml'.format(self.log_type)))
-            plt.savefig(Path(self.savePath).joinpath('{}_graph.png'.format(self.log_type)))
+        # Only generate PNG visual plot for smaller graphs to avoid high memory/CPU freeze
+        if G.number_of_nodes() < 500:
+            fig, ax = plt.subplots()
+            graphdraw = graphlabel.GraphLabel(cfg.attr_iocs_dict, cfg.ait_iot_dict)
+            graphdraw.draw_labeled_multigraph(G, "value", ax)
+            fig.tight_layout()
+            plt.savefig(save_path.joinpath(f'{file_name}_graph.png'))
+            plt.close(fig)
         else:
-            nx.write_graphml_lxml(G, Path(self.savePath).joinpath('{}.graphml'.format(name)))
-            plt.savefig(Path(self.savePath).joinpath('{}_graph.png'.format(name)))
+            logger.info("Graph has %s nodes. Skipping PNG generation to prevent hanging.", G.number_of_nodes())
 
     def graph_label(self,):
         pass

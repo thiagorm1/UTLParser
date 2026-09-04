@@ -13,6 +13,7 @@ from core.pattern import graphrule
 from pathlib import Path
 import pandas as pd
 from core.graph_label import graphlabel
+import cfg
 
 # set the configuration
 logging.basicConfig(level=logging.DEBUG,
@@ -111,11 +112,16 @@ class StruGrausalGraph:
         return G
 
     def graph_save(self, G):
+        save_path = Path(self.savePath)
+        save_path.mkdir(parents=True, exist_ok=True)
+        nx.write_graphml_lxml(G, save_path.joinpath('{}.graphml'.format(self.log_type)))
 
-        fig, ax = plt.subplots()
-        graphdraw = graphlabel.GraphLabel()
-        graphdraw.draw_labeled_multigraph(G, "value", ax)
-        fig.tight_layout()
-        # plt.show()
-        nx.write_graphml_lxml(G, Path(self.savePath).joinpath('{}.graphml'.format(self.log_type)))
-        plt.savefig(Path(self.savePath).joinpath('{}_graph.png'.format(self.log_type)))
+        if G.number_of_nodes() < 500:
+            fig, ax = plt.subplots()
+            graphdraw = graphlabel.GraphLabel(cfg.attr_iocs_dict, cfg.ait_iot_dict)
+            graphdraw.draw_labeled_multigraph(G, "value", ax)
+            fig.tight_layout()
+            plt.savefig(save_path.joinpath('{}_graph.png'.format(self.log_type)))
+            plt.close(fig)
+        else:
+            logger.info("Graph has %s nodes. Skipping PNG generation to prevent hanging.", G.number_of_nodes())
