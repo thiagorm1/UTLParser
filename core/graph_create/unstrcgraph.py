@@ -210,11 +210,22 @@ class UnstrGausalGraph:
 
         return G
 
+    def _prepare_export_graph(self, G):
+        """Ensure all edges have globally unique IDs for GraphML/Gephi compatibility"""
+        if isinstance(G, (nx.MultiGraph, nx.MultiDiGraph)):
+            G_export = G.__class__()
+            G_export.add_nodes_from(G.nodes(data=True))
+            for i, (u, v, data) in enumerate(G.edges(data=True)):
+                G_export.add_edge(u, v, key=f"e_{i}", **data)
+            return G_export
+        return G
+
     def graph_save(self, G, name:str):
         file_name = name if name else self.log_type
         save_path = Path(self.savePath)
         save_path.mkdir(parents=True, exist_ok=True)
-        nx.write_graphml_lxml(G, save_path.joinpath(f'{file_name}.graphml'))
+        G_export = self._prepare_export_graph(G)
+        nx.write_graphml_lxml(G_export, save_path.joinpath(f'{file_name}.graphml'))
 
         # Only generate PNG visual plot for smaller graphs to avoid high memory/CPU freeze
         if G.number_of_nodes() < 500:
