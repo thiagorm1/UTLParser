@@ -119,6 +119,14 @@ class StrLogParser:
         out_df.to_parquet(
             save_dir.joinpath(self.logName + "_uniform.parquet"), index=False
         )
+        stem = Path(self.logName).stem
+        if self.app and self.app.lower() != stem.lower():
+            out_df.to_parquet(
+                save_dir.joinpath(f"{self.app.lower()}.log_uniform.parquet"), index=False
+            )
+            out_df.to_csv(
+                save_dir.joinpath(f"{self.app.lower()}.log_uniform.csv"), index=False
+            )
 
 
 
