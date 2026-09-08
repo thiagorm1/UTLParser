@@ -30,31 +30,68 @@ class StruGrausalGraph:
     '''
     def __init__(self, indir:str, outdir:str, log_type:str):
         self.graphrule = graphrule.graph_attrs_json
-        self.log_type = log_type
+        
+        clean_type = log_type.lower()
+        if clean_type in ["zeek", "conn"]:
+            self.log_type = "conn"
+        elif clean_type not in self.graphrule:
+            for k in self.graphrule:
+                if k in clean_type or clean_type in k:
+                    self.log_type = k
+                    break
+            else:
+                self.log_type = log_type
+        else:
+            self.log_type = clean_type
+
         self.savePath = outdir
-        candidates = [
+        self.candidates = [
+            Path(outdir).joinpath(f"{self.log_type}.log_uniform.parquet"),
+            Path(outdir).joinpath(f"{self.log_type}.log_uniform.csv"),
             Path(outdir).joinpath(f"{log_type}.log_uniform.parquet"),
             Path(outdir).joinpath(f"{log_type}.log_uniform.csv"),
+            Path(outdir).joinpath("conn.log_uniform.parquet"),
+            Path(outdir).joinpath("conn.log_uniform.csv"),
+            Path(outdir).joinpath("zeek.log_uniform.parquet"),
+            Path(outdir).joinpath("zeek.log_uniform.csv"),
+            Path(indir).joinpath(f"{self.log_type}.log_uniform.parquet"),
+            Path(indir).joinpath(f"{self.log_type}.log_uniform.csv"),
             Path(indir).joinpath(f"{log_type}.log_uniform.parquet"),
             Path(indir).joinpath(f"{log_type}.log_uniform.csv"),
+            Path(indir).joinpath("conn.log_uniform.parquet"),
+            Path(indir).joinpath("conn.log_uniform.csv"),
         ]
-        self.datapath = candidates[0].as_posix()
-        for p in candidates:
+        self.datapath = self.candidates[0].as_posix()
+        for p in self.candidates:
             if p.exists():
                 self.datapath = p.as_posix()
                 break
     
     def data_load(self,):
-        if not Path(self.datapath).exists():
-            for p in [
-                Path(self.savePath).joinpath(f"{self.log_type}.log_uniform.parquet"),
-                Path(self.savePath).joinpath(f"{self.log_type}.log_uniform.csv"),
-            ]:
-                if p.exists():
-                    self.datapath = p.as_posix()
-                    break
+        selected = None
+        for p in self.candidates:
+            if p.exists():
+                selected = p
+                break
+        if selected is None:
+            found = list(Path(self.savePath).glob("*_uniform.parquet")) + list(Path(self.savePath).glob("*_uniform.csv"))
+            if found:
+                selected = found[0]
+            else:
+                selected = self.candidates[0]
+        self.datapath = selected.as_posix()
+
         if str(self.datapath).endswith(".csv"):
             self.log_df = pd.read_csv(self.datapath)
+            if 'IOCs' in self.log_df.columns:
+                def _parse_iocs(val):
+                    if isinstance(val, str):
+                        try:
+                            return ast.literal_eval(val)
+                        except Exception:
+                            return val.strip("[]").replace("'", "").split(",")
+                    return val
+                self.log_df['IOCs'] = self.log_df['IOCs'].apply(_parse_iocs)
         else:
             self.log_df = pd.read_parquet(self.datapath)
 
