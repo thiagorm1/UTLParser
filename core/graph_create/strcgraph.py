@@ -14,6 +14,8 @@ from pathlib import Path
 import pandas as pd
 from core.graph_label import graphlabel
 import cfg
+from datetime import datetime
+import ast
 
 # set the configuration
 logging.basicConfig(level=logging.DEBUG,
@@ -167,13 +169,27 @@ class StruGrausalGraph:
 
         return G
 
+    def _sanitize_value(self, val):
+        if val is None or (isinstance(val, float) and pd.isna(val)):
+            return "-"
+        if isinstance(val, (int, float, str, bool)):
+            return val
+        if isinstance(val, (datetime, pd.Timestamp)):
+            return str(val)
+        if isinstance(val, (list, tuple, dict, set)):
+            return str(val)
+        return str(val)
+
     def _prepare_export_graph(self, G):
-        """Ensure all edges have globally unique IDs for GraphML/Gephi compatibility"""
+        """Ensure all edges have globally unique IDs and attributes are GraphML-serializable"""
         if isinstance(G, (nx.MultiGraph, nx.MultiDiGraph)):
             G_export = G.__class__()
-            G_export.add_nodes_from(G.nodes(data=True))
+            for node, data in G.nodes(data=True):
+                clean_data = {k: self._sanitize_value(v) for k, v in data.items()}
+                G_export.add_node(str(node), **clean_data)
             for i, (u, v, data) in enumerate(G.edges(data=True)):
-                G_export.add_edge(u, v, key=f"e_{i}", **data)
+                clean_data = {k: self._sanitize_value(v) for k, v in data.items()}
+                G_export.add_edge(str(u), str(v), key=f"e_{i}", **clean_data)
             return G_export
         return G
 
@@ -181,7 +197,11 @@ class StruGrausalGraph:
         save_path = Path(self.savePath)
         save_path.mkdir(parents=True, exist_ok=True)
         G_export = self._prepare_export_graph(G)
-        nx.write_graphml_lxml(G_export, save_path.joinpath('{}.graphml'.format(self.log_type)))
+        target_file = save_path.joinpath('{}.graphml'.format(self.log_type))
+        try:
+            nx.write_graphml_lxml(G_export, target_file)
+        except (ImportError, ModuleNotFoundError):
+            nx.write_graphml_xml(G_export, target_file)
 
         if G.number_of_nodes() < 500:
             fig, ax = plt.subplots()
