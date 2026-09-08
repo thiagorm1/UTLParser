@@ -8,3 +8,4 @@ __pycache__
 large_data/
 CITATION.cff
 output/
+app.log
