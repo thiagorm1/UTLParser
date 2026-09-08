@@ -110,12 +110,14 @@ class StrLogParser:
         for key, value in self.format_output.items():
             print(len(value))
         
+        save_dir = Path(self.savePath)
+        save_dir.mkdir(parents=True, exist_ok=True)
         out_df = pd.DataFrame(self.format_output)
         out_df.to_csv(
-            Path(self.savePath).joinpath(self.logName + "_uniform.csv"), index=False
+            save_dir.joinpath(self.logName + "_uniform.csv"), index=False
         )
         out_df.to_parquet(
-            Path(self.savePath).joinpath(self.logName + "_uniform.parquet"), index=False
+            save_dir.joinpath(self.logName + "_uniform.parquet"), index=False
         )
 
 

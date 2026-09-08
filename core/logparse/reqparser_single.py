@@ -211,8 +211,10 @@ class ReqParser:
 
                 # logger.info("the parsing output is like: {}".format(self.format_output))
 
+        save_dir = Path(self.savePath)
+        save_dir.mkdir(parents=True, exist_ok=True)
         pd.DataFrame(self.format_output).to_csv(
-            Path(self.savePath).joinpath(self.logName + "_uniform.csv"), index=False
+            save_dir.joinpath(self.logName + "_uniform.csv"), index=False
         )
         # pd.DataFrame(self.format_output).to_parquet(
         #     Path(self.savePath).joinpath(self.logName + "_uniform.parquet"), index=False

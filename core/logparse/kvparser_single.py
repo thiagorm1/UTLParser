@@ -377,8 +377,10 @@ class KVParser:
         # format time
         log_df = util.time_format(log_df)
         
+        save_dir = Path(self.savePath)
+        save_dir.mkdir(parents=True, exist_ok=True)
         log_df[list(self.format_output.keys())].to_csv(
-            Path(self.savePath).joinpath(self.logName + "_uniform.csv"), index=False
+            save_dir.joinpath(self.logName + "_uniform.csv"), index=False
         )
         # log_df[list(self.format_output.keys())].to_parquet(
         #     Path(self.savePath).joinpath(self.logName + "_uniform.parquet"), index=False

@@ -418,8 +418,10 @@ class GenLogParser:
             self.df_log["Parameters"] = self.df_log.progress_apply(
                 self.get_parameter_list, axis=1
             )
+        save_dir = Path(self.savePath)
+        save_dir.mkdir(parents=True, exist_ok=True)
         self.df_log.to_csv(
-            Path(self.savePath).joinpath(self.logName + "_structured.csv"), index=False
+            save_dir.joinpath(self.logName + "_structured.csv"), index=False
         )
 
         occ_dict = dict(self.df_log["EventTemplate"].value_counts())
@@ -585,8 +587,10 @@ class GenLogParser:
 
         # logger.info("the parsing output is like: {}".format(self.format_output))
 
+        save_dir = Path(self.savePath)
+        save_dir.mkdir(parents=True, exist_ok=True)
         pd.DataFrame(self.format_output).to_csv(
-            Path(self.savePath).joinpath(self.logName + "_uniform.csv"), index=False
+            save_dir.joinpath(self.logName + "_uniform.csv"), index=False
         )
         
         # pd.DataFrame(self.format_output).to_parquet(
