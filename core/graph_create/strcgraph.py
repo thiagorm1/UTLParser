@@ -30,14 +30,33 @@ class StruGrausalGraph:
     '''
     def __init__(self, indir:str, outdir:str, log_type:str):
         self.graphrule = graphrule.graph_attrs_json
-        # self.datapath = Path(indir).joinpath("{}.log_uniform.csv".format(log_type)).as_posix()
-        self.datapath = Path(indir).joinpath("{}.log_uniform.parquet".format(log_type)).as_posix()
         self.log_type = log_type
         self.savePath = outdir
+        candidates = [
+            Path(outdir).joinpath(f"{log_type}.log_uniform.parquet"),
+            Path(outdir).joinpath(f"{log_type}.log_uniform.csv"),
+            Path(indir).joinpath(f"{log_type}.log_uniform.parquet"),
+            Path(indir).joinpath(f"{log_type}.log_uniform.csv"),
+        ]
+        self.datapath = candidates[0].as_posix()
+        for p in candidates:
+            if p.exists():
+                self.datapath = p.as_posix()
+                break
     
     def data_load(self,):
-        # self.log_df = pd.read_csv(self.datapath)
-        self.log_df = pd.read_parquet(self.datapath)
+        if not Path(self.datapath).exists():
+            for p in [
+                Path(self.savePath).joinpath(f"{self.log_type}.log_uniform.parquet"),
+                Path(self.savePath).joinpath(f"{self.log_type}.log_uniform.csv"),
+            ]:
+                if p.exists():
+                    self.datapath = p.as_posix()
+                    break
+        if str(self.datapath).endswith(".csv"):
+            self.log_df = pd.read_csv(self.datapath)
+        else:
+            self.log_df = pd.read_parquet(self.datapath)
 
     def node_check(self, row:dict, node_value_key:list):
         ''' check whether node value is - or IP address
@@ -121,7 +140,7 @@ class StruGrausalGraph:
             return G_export
         return G
 
-    def graph_save(self, G):
+    def graph_save(self, G, flag=None):
         save_path = Path(self.savePath)
         save_path.mkdir(parents=True, exist_ok=True)
         G_export = self._prepare_export_graph(G)
