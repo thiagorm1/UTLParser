@@ -177,6 +177,7 @@ if __name__ == "__main__":
 
     log_path = indir.joinpath(log_file)
     output_path = args.output
+    Path(output_path).mkdir(parents=True, exist_ok=True)
     iocs_list = args.entities
     struc = args.structure
     entity_path = args.entity_path
