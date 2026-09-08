@@ -129,6 +129,8 @@ class LogParser:
         if hasattr(logparser, "depth") and hasattr(logparser, "parse"):
             logparser.parse()
             logparser.poi_ext()
+        
+        try:
             logparser.get_output(0)
-        else:
-            logparser.get_output(0)
+        except TypeError:
+            logparser.get_output()
