@@ -31,7 +31,19 @@ class StrLogParser:
 
     def __init__(self, indir:str, outdir:dir, log_name:str, log_type:str, app:str):
         
-        self.PoI = cfg.POI[app][log_type]
+        if app in cfg.POI and log_type in cfg.POI[app]:
+            self.app = app
+            self.PoI = cfg.POI[app][log_type]
+        else:
+            for p_app, types in cfg.POI.items():
+                if log_type in types or (app and app.lower() in types):
+                    self.app = p_app
+                    self.PoI = types.get(log_type, types.get(app))
+                    break
+            else:
+                self.app = "zeek"
+                self.PoI = cfg.POI.get("zeek", {}).get("conn", [])
+
         self.format_output = {
             "Time":[],
             "Src_IP":[],
@@ -51,7 +63,6 @@ class StrLogParser:
         self.path = indir
         self.savePath = outdir
         self.log_type = log_type
-        self.app = app
         
         # read structured logs    
         log_to_df = LogToDataFrame()
@@ -69,15 +80,21 @@ class StrLogParser:
         '''
         return self.df[self.PoI]
 
-    def get_output(self,):
+    def get_output(self, label: int = 0):
 
         logger.info("generating the format output for {}-{} logs".format(self.app.lower(), \
                                                                          self.log_type.lower()))
-        column_poi_map = domaininfo.stru_log_poi_map[self.app][self.log_type]
+        if self.app in domaininfo.stru_log_poi_map and self.log_type in domaininfo.stru_log_poi_map[self.app]:
+            column_poi_map = domaininfo.stru_log_poi_map[self.app][self.log_type]
+        else:
+            column_poi_map = domaininfo.stru_log_poi_map.get("zeek", {}).get("conn", {})
+
         sum_poi_dict = self.log_parse()
         log_num = len(self.df)
         for column, _ in self.format_output.items():
-            if column in column_poi_map.keys():
+            if column == "Label":
+                self.format_output[column] = [label] * log_num
+            elif column in column_poi_map.keys():
                 if isinstance(column_poi_map[column], list):
                     self.format_output[column] = \
                         sum_poi_dict.apply(lambda row: [row[col] for col in column_poi_map[column]], axis=1)
@@ -92,11 +109,13 @@ class StrLogParser:
         # logger.info("the parsing output is like: {}".format(self.format_output))
         for key, value in self.format_output.items():
             print(len(value))
-        # pd.DataFrame(self.format_output).to_csv(
-        #     Path(self.savePath).joinpath(self.logName + "_uniform.csv"), index=False
-        # )
-        pd.DataFrame(self.format_output).to_parquet(
-            Path(self.savePath).joinpath(self.logName + "_uniform.parquest"), index=False
+        
+        out_df = pd.DataFrame(self.format_output)
+        out_df.to_csv(
+            Path(self.savePath).joinpath(self.logName + "_uniform.csv"), index=False
+        )
+        out_df.to_parquet(
+            Path(self.savePath).joinpath(self.logName + "_uniform.parquet"), index=False
         )
 
 
