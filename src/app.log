@@ -128,3 +128,5 @@
 2026-09-03 16:00:21,936 - __main__ - INFO - generate causal graphs from None /home/thiagorm/Projects/UTLParser/unit_test/data
 2026-09-03 16:09:02,293 - __main__ - INFO - generate causal graphs from None /home/thiagorm/Projects/UTLParser/unit_test/data
 2026-09-03 16:12:21,459 - __main__ - INFO - All log processing tasks completed.
+2026-09-22 16:41:42,672 - __main__ - INFO - generate causal graphs from None /home/thiagorm/Projects/UTLParser/unit_test/data
+2026-09-22 16:45:25,605 - __main__ - INFO - All log processing tasks completed.
