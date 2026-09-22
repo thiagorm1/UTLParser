@@ -44,6 +44,27 @@ class GraphFusion:
         '''
         return nx.compose_all(graph_list)
 
+    @staticmethod
+    def _parse_time(t_val):
+        if not t_val or t_val == "-":
+            return None
+        t_str = str(t_val).strip()
+        for fmt in (
+            "%Y-%b-%d %H:%M:%S.%f",
+            "%Y-%b-%d %H:%M:%S",
+            "%Y-%m-%d %H:%M:%S.%f",
+            "%Y-%m-%d %H:%M:%S",
+        ):
+            try:
+                return datetime.strptime(t_str, fmt)
+            except ValueError:
+                continue
+        try:
+            from dateutil import parser
+            return parser.parse(t_str)
+        except Exception:
+            return None
+
     def temp_graph(self, G:nx.classes.digraph.DiGraph, T:str, threshold: int):
         '''
         :param G: the original fused multi-edge directed graph
@@ -51,13 +72,13 @@ class GraphFusion:
         '''
         # calculate the time interval
         min_time, max_time = self.time_scope(T, threshold)
-        time_format = "%Y-%b-%d %H:%M:%S.%f"
         temp_graph = nx.MultiDiGraph()
         for u, v, edge in G.edges(data=True):
-            # extract the attribute element
-            if datetime.strptime(edge['timestamp'], time_format) >=min_time and \
-                 datetime.strptime(edge['timestamp'], time_format) <=max_time :
-                temp_graph.add_edge(u,v, **edge)
+            if 'timestamp' not in edge:
+                continue
+            edge_time = self._parse_time(edge['timestamp'])
+            if edge_time and min_time <= edge_time <= max_time:
+                temp_graph.add_edge(u, v, **edge)
         # print("The temporal graph at timestamp {} is".format(T))
         return temp_graph
 
@@ -82,8 +103,9 @@ class GraphFusion:
         ''' calculate the datetime scope according to threshold
         
         '''
-        time_format = "%Y-%b-%d %H:%M:%S.%f"
-        timestamp = datetime.strptime(T, time_format)
+        timestamp = self._parse_time(T)
+        if timestamp is None:
+            raise ValueError(f"Could not parse timestamp '{T}'")
         min_time = timestamp - timedelta(seconds=threshold)
         max_time = timestamp + timedelta(seconds=threshold)
         return min_time, max_time
