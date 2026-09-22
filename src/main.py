@@ -211,8 +211,10 @@ if __name__ == "__main__":
 
     if args.label and args.output:
         print("** make sure you generate fused graph before **")
-        # load the fused graph
-        fused_graph = nx.read_graphml(Path(outdir).joinpath("full.graphml"))
+        full_graph_path = Path(output_path).joinpath("full.graphml")
+        if not full_graph_path.exists():
+            full_graph_path = Path(outdir).joinpath("full.graphml")
+        fused_graph = nx.read_graphml(full_graph_path)
         subgraphs, labels = graph_label(fused_graph)    
         print(subgraphs)
         print(labels)
