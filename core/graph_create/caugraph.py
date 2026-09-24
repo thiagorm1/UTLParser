@@ -65,7 +65,9 @@ def fuse_subgraphs(log_type_list:list, output_path:str, entity_path:str):
     for log_type in log_type_list:
         grapher = unstrcgraph.UnstrGausalGraph(output_path, log_type)
         grapher.data_load()
-        sub_graph_list.append(grapher.causal_graph())
+        sub = grapher.causal_graph()
+        grapher.graph_save(sub, log_type)
+        sub_graph_list.append(sub)
     
     graphfusion = gfusion.GraphFusion(cfg.avg_len, entity_path)
 
